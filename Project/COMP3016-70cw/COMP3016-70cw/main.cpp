@@ -8,7 +8,6 @@
 
 GLuint program;
 
-// Start here
 using namespace std;
 
 //VAO vertex attribute positions in correspondence to vertex attribute type
