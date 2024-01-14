@@ -1,3 +1,1 @@
-﻿  main.cpp
-MSVCRTD.lib(exe_main.obj) : error LNK2019: unresolved external symbol main referenced in function "int __cdecl invoke_main(void)" (?invoke_main@@YAHXZ)
-C:\Users\Ken\source\repos\COMP3016-70cw\x64\Debug\COMP3016-70cw.exe : fatal error LNK1120: 1 unresolved externals
+﻿  COMP3016-70cw.vcxproj -> G:\Ken\Documents\GitHub\comp3016-70cw\Project\COMP3016-70cw\x64\Debug\COMP3016-70cw.exe

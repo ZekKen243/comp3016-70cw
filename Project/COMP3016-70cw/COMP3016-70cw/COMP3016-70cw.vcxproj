@@ -112,7 +112,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib, glfw3.lib, glew32.lib, glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -132,15 +132,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\Downloads\glad\src\glad.c" />
     <ClCompile Include="LoadShaders\LoadShaders.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LoadShaders\LoadShaders.h" />
+    <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\..\Downloads\glew-2.1.0-win32\glew-2.1.0\bin\Release\x64\glew32.dll" />
+    <None Include="fragmentShader.frag" />
+    <None Include="glew32.dll" />
+    <None Include="vertexShader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

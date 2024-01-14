@@ -24,18 +24,24 @@
     <ClCompile Include="LoadShaders\LoadShaders.cpp">
       <Filter>shaders</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\Downloads\glad\src\glad.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LoadShaders\LoadShaders.h">
       <Filter>shaders</Filter>
     </ClInclude>
+    <ClInclude Include="main.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\..\Downloads\glew-2.1.0-win32\glew-2.1.0\bin\Release\x64\glew32.dll">
+    <None Include="glew32.dll">
       <Filter>Source Files</Filter>
+    </None>
+    <None Include="vertexShader.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="fragmentShader.frag">
+      <Filter>shaders</Filter>
     </None>
   </ItemGroup>
 </Project>
