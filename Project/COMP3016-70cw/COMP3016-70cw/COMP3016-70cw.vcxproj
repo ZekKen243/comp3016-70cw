@@ -134,10 +134,12 @@
   <ItemGroup>
     <ClCompile Include="LoadShaders\LoadShaders.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="stbImageLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LoadShaders\LoadShaders.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="fragmentShader.frag" />

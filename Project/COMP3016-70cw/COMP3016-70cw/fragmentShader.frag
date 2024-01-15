@@ -2,8 +2,11 @@
 //Colour value to send to next stage
 out vec4 FragColor;
 
+//Colour coordinates from last stage
+in vec3 colourFrag;
+
 void main()
 {
-    //RGBA values
-    FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    //Setting of colour coordinates to colour map
+    FragColor = vec4(colourFrag, 1.0f);
 }
