@@ -1,16 +1,27 @@
 //STD
 #include <iostream>
 
-//GLEW
-#include <GL/glew.h>
+//GLAD
+#include <glad/glad.h>
 
 //GLM
 #include "glm/ext/vector_float3.hpp"
-#include <glm/gtc/type_ptr.hpp> // GLM: access to the value_ptr
+#include <glm/gtc/type_ptr.hpp> //Access to the value_ptr
+#include <glm/gtc/noise.hpp>
+
+//ASSIMP
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+//LEARNOPENGL
+#include <learnopengl/shader_m.h>
+#include <learnopengl/model.h>
 
 //GENERAL
 #include "main.h"
-#include "LoadShaders/LoadShaders.h"
+
+#include "FastNoiseLite.h"
 
 using namespace std;
 using namespace glm;
@@ -47,21 +58,17 @@ bool mouseFirstEntry = true;
 float cameraLastXPos = 800.0f / 2.0f;
 float cameraLastYPos = 600.0f / 2.0f;
 
+//Model-View-Projection Matrix
+mat4 mvp;
+mat4 model;
+mat4 view;
+mat4 projection;
+
 //Time
 //Time change
 float deltaTime = 0.0f;
 //Last value of time change
 float lastFrame = 0.0f;
-
-#define RENDER_DISTANCE 128 //Render width of map
-#define MAP_SIZE RENDER_DISTANCE * RENDER_DISTANCE //Size of map in x & z space
-
-//Amount of chunks across one dimension
-const int squaresRow = RENDER_DISTANCE - 1;
-//Two triangles per square to form a 1x1 chunk
-const int trianglesPerSquare = 2;
-//Amount of triangles on map
-const int trianglesGrid = squaresRow * squaresRow * trianglesPerSquare;
 
 int main()
 {
@@ -70,7 +77,7 @@ int main()
     //Initialisation of 'GLFWwindow' object
     windowWidth = 1280;
     windowHeight = 720;
-    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "COMP3016", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "OpenGL COMP3016 KS", NULL, NULL);
 
     //Checks if window has been successfully instantiated
     if (window == NULL)
@@ -86,19 +93,19 @@ int main()
     //Binds OpenGL to window
     glfwMakeContextCurrent(window);
 
-    //Initialisation of GLEW
-    glewInit();
-
-    //Load shaders
-    ShaderInfo shaders[] =
+    //Initialisation of GLAD
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        { GL_VERTEX_SHADER, "vertexShader.vert" },
-        { GL_FRAGMENT_SHADER, "fragmentShader.frag" },
-        { GL_NONE, NULL }
-    };
+        cout << "GLAD failed to initialise\n";
+        return -1;
+    }
 
-    program = LoadShaders(shaders);
-    glUseProgram(program);
+    //Loading of shaders
+    Shader Shaders("vertexShader.vert", "fragmentShader.frag");
+    Model Cave1("media/floor_cave/ArchCave.obj");
+    Model LRock("media/floor_cave2/CaveCrystal01.obj");
+    /*Model Floor("media/floor/volcano_floor.obj");*/
+    Shaders.use();
 
     //Sets the viewport size within the window to match the window size of 1280x720
     glViewport(0, 0, 1280, 720);
@@ -109,124 +116,20 @@ int main()
     //Sets the mouse_callback() function as the callback for the mouse movement event
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    //Generation of height map vertices
-    GLfloat terrainVertices[MAP_SIZE][6];
-
-    //Positions to start drawing from
-    float drawingStartPosition = 1.0f;
-    float columnVerticesOffset = drawingStartPosition;
-    float rowVerticesOffset = drawingStartPosition;
-
-    int rowIndex = 0;
-
-    for (int i = 0; i < MAP_SIZE; i++)
-    {
-        //Generation of x & z vertices for horizontal plane
-        terrainVertices[i][0] = columnVerticesOffset;
-        terrainVertices[i][1] = 0.0f;
-        terrainVertices[i][2] = rowVerticesOffset;
-
-        //Colour
-        terrainVertices[i][3] = 0.0f;
-        terrainVertices[i][4] = 0.75f;
-        terrainVertices[i][5] = 0.25f;
-
-        //Shifts x position across for next triangle along grid
-        columnVerticesOffset = columnVerticesOffset + -0.0625f;
-
-        //Indexing of each chunk within row
-        rowIndex++;
-        //True when all triangles of the current row have been generated
-        if (rowIndex == RENDER_DISTANCE)
-        {
-            //Resets for next row of triangles
-            rowIndex = 0;
-            //Resets x position for next row of triangles
-            columnVerticesOffset = drawingStartPosition;
-            //Shifts y position
-            rowVerticesOffset = rowVerticesOffset + -0.0625f;
-        }
-    }
-
-    //Generation of height map indices
-    GLuint terrainIndices[trianglesGrid][3];
-
-    //Positions to start mapping indices from
-    int columnIndicesOffset = 0;
-    int rowIndicesOffset = 0;
-
-    //Generation of map indices in the form of chunks (1x1 right angle triangle squares)
-    rowIndex = 0;
-    for (int i = 0; i < trianglesGrid - 1; i += 2)
-    {
-        terrainIndices[i][0] = columnIndicesOffset + rowIndicesOffset; //top left
-        terrainIndices[i][2] = RENDER_DISTANCE + columnIndicesOffset + rowIndicesOffset; //bottom left
-        terrainIndices[i][1] = 1 + columnIndicesOffset + rowIndicesOffset; //top right
-
-        terrainIndices[i + 1][0] = 1 + columnIndicesOffset + rowIndicesOffset; //top right
-        terrainIndices[i + 1][2] = RENDER_DISTANCE + columnIndicesOffset + rowIndicesOffset; //bottom left
-        terrainIndices[i + 1][1] = 1 + RENDER_DISTANCE + columnIndicesOffset + rowIndicesOffset; //bottom right
-
-        //Shifts x position across for next chunk along grid
-        columnIndicesOffset = columnIndicesOffset + 1;
-
-        //Indexing of each chunk within row
-        rowIndex++;
-
-        //True when all chunks of the current row have been generated
-        if (rowIndex == squaresRow)
-        {
-            //Resets for next row of chunks
-            rowIndex = 0;
-            //Resets x position for next row of chunks
-            columnIndicesOffset = 0;
-            //Shifts y position
-            rowIndicesOffset = rowIndicesOffset + RENDER_DISTANCE;
-        }
-    }
-
-    //Sets index of VAO
-    glGenVertexArrays(NumVAOs, VAOs);
-    //Binds VAO to a buffer
-    glBindVertexArray(VAOs[0]);
-    //Sets indexes of all required buffer objects
-    glGenBuffers(NumBuffers, Buffers);
-    //glGenBuffers(1, &EBO);
-
-    //Binds vertex object to array buffer
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[Triangles]);
-    //Allocates buffer memory for the vertices of the 'Triangles' buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(terrainVertices), terrainVertices, GL_STATIC_DRAW);
-
-    //Binding & allocation for indices
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[Indices]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(terrainIndices), terrainIndices, GL_STATIC_DRAW);
-
-    //Allocation & indexing of vertex attribute memory for vertex shader
-    //Positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    //Colours
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    //Unbinding
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
     //Model matrix
-    mat4 model = mat4(1.0f);
+    model = mat4(1.0f);
     //Scaling to zoom in
-    model = scale(model, vec3(2.0f, 2.0f, 2.0f));
+    model = scale(model, vec3(0.025f, 0.025f, 0.025f)); //rock
     //Looking straight forward
     model = rotate(model, radians(0.0f), vec3(1.0f, 0.0f, 0.0f));
     //Elevation to look upon terrain
     model = translate(model, vec3(0.0f, -2.f, -1.5f));
 
     //Projection matrix
-    mat4 projection = perspective(radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+    projection = perspective(radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+
+    //Create instance of FastNoiseLite
+    FastNoiseLite noise;
 
     //Render loop
     while (glfwWindowShouldClose(window) == false)
@@ -242,17 +145,31 @@ int main()
         //Rendering
         glClearColor(0.25f, 0.3f, 0.3f, 1.0f); //Colour to display on cleared window
         glClear(GL_COLOR_BUFFER_BIT); //Clears the colour buffer
+        glClear(GL_DEPTH_BUFFER_BIT); //Might need
 
-        //Transformations
-        mat4 view = lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp); //Sets the position of the viewer, the movement direction in relation to it & the world up direction
-        mat4 mvp = projection * view * model;
-        int mvpLoc = glGetUniformLocation(program, "mvpIn");
+        glEnable(GL_CULL_FACE); //Discards all back-facing triangles
 
-        glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, value_ptr(mvp));
+        //Transformations & Drawing
+        //Viewer orientation
+        view = lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp); //Sets the position of the viewer, the movement direction in relation to it & the world up direction
 
-        //Drawing
-        glBindVertexArray(VAOs[0]);
-        glDrawElements(GL_TRIANGLES, MAP_SIZE * 32, GL_UNSIGNED_INT, 0);
+        //Lava Rock
+        SetMatrices(Shaders);
+        LRock.Draw(Shaders);
+
+        //Cave Rock (changes MVP in relation to past values)
+        model = scale(model, vec3(0.05f, 0.05f, 0.05f));
+        SetMatrices(Shaders);
+        Cave1.Draw(Shaders);
+
+        //Cave1 (reorient MVP back to starting values)
+        model = scale(model, vec3(20.0f, 20.0f, 20.0f));
+        SetMatrices(Shaders);
+
+        ////Floor
+        //model = scale(model, vec3(20.0f, 20.0f, 20.0f));
+        //SetMatrices(Shaders);
+        //Floor.Draw(Shaders);
 
         //Refreshing
         glfwSwapBuffers(window); //Swaps the colour buffer
@@ -318,7 +235,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 
 void ProcessUserInput(GLFWwindow* WindowIn)
 {
-    //Closes window on 'exit' key press (Esc)
+    //Closes window on 'exit' key press
     if (glfwGetKey(WindowIn, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(WindowIn, true);
@@ -343,4 +260,10 @@ void ProcessUserInput(GLFWwindow* WindowIn)
     {
         cameraPosition += normalize(cross(cameraFront, cameraUp)) * movementSpeed;
     }
+}
+
+void SetMatrices(Shader& ShaderProgramIn)
+{
+    mvp = projection * view * model; //Setting of MVP
+    ShaderProgramIn.setMat4("mvpIn", mvp); //Setting of uniform with Shader class
 }
